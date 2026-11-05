@@ -1,0 +1,14 @@
+Store dictionary 
+    -\ key = token
+    -\ first value is list 
+    -\index 0 is the frequency of the token
+    -\ remaining indexes are ids of documents that have been hashed
+    -\ binary search during add to determine location
+
+Tokens (Ignoring html structures)
+    -\ Pull word by word out of documents
+    -\ word will be tokenized after utilizing NLTK to determine if the word shall be tokenized
+    -\ and if so, stem it (also via nltk)
+    -\ since pulling out word by word, utilize NLTK tokenizer to tokenize!
+    -\ store all tokens in a dictionary with key = token, value = frequency
+    -\ add page dictionary of tokens to corpus inverse index matrix
