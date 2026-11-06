@@ -1,7 +1,7 @@
 Store dictionary 
     -\ key = token
     -\ first value is list 
-    -\index 0 is the frequency of the token
+    -\ index 0 is the frequency of the token
     -\ remaining indexes are ids of documents that have been hashed
     -\ binary search during add to determine location
 
