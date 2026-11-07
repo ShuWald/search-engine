@@ -7,3 +7,5 @@ venv/
 __pycache__/
 
 logs/*
+
+inverted_index.json
