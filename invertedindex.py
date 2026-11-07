@@ -4,7 +4,7 @@ class InvertedIndex:
     def __init__(self):
         self.index = {}
 
-    def add_document(self, doc_id: int, unique_tokens: list[tuple(str , int)]):
+    def add_document(self, doc_id: int, unique_tokens: list[tuple[str, int]]):
         for token, frequency in unique_tokens:
             if token not in self.index:
                 self.index[token] = []
