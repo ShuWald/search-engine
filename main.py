@@ -37,11 +37,11 @@ for urlfolder in os.listdir(directory):
             # This includes stemming 
             # Note: Stemming can modify original/root word, see logs
             token_counts = tokenizer.process(clean_text)
+
             title_token_counts = None if title is None else tokenizer.process(title)
 
             # tokenizer.process_unique does this directly from content
-            unique_tokens = list(token_counts.keys())
-            ii.add_document(docu_id.doc_id, unique_tokens)
+            ii.add_document(docu_id.doc_id, token_counts)
             num_idx_docs += 1
 
             scorer = Scorer()
