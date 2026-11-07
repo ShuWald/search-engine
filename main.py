@@ -1,9 +1,11 @@
 import os
 import json
 from logger import get_file_logger, get_logger
+from docuid import DocuID, Url
 from parser import ContentParser
 from scoring import Scorer
 from tokenizer import Tokenizer
+from invertedindex import InvertedIndex
 
 # Maybe throw this into a config later?
 # Can only be ANALYST or DEV as per instructor data
@@ -15,12 +17,14 @@ directory = f"Data/{target}"
 logger = get_logger(__name__)
 scorerlogger = get_file_logger("scorer")
 
+ii = InvertedIndex()
+
 for urlfolder in os.listdir(directory):
     for filename in os.listdir(os.path.join(directory, urlfolder)):
-        logger.info(f"(Not) Processing file: {filename}")
+        logger.info(f"(Not) Processing file: {filename} under {urlfolder}")
         with open(os.path.join(directory, urlfolder, filename), "r") as file:
             obj = json.load(file)
-            url = obj.get("url")
+            docu_id = DocuID(url_string=obj.get("url"))
             content = obj.get("content")
 
             parser = ContentParser(content) 
@@ -34,15 +38,22 @@ for urlfolder in os.listdir(directory):
             token_counts = tokenizer.process(clean_text)
             title_token_counts = None if title is None else tokenizer.process(title)
 
+            # tokenizer.process_unique does this directly from content
+            unique_tokens = list(token_counts.keys())
+            ii.add_document(docu_id.doc_id, unique_tokens)
+
             scorer = Scorer()
             scores = scorer.score({
                 "content": token_counts,
                 "title": title_token_counts
             })
 
-            scorerlogger.info(f"URL: {url}")
+            scorerlogger.info(f"URL: {docu_id.url}")
             scorerlogger.info(f"Scores: {scores}\n\n")
-            logger.info(f"Finished processing file: {filename}")
+            # Nothing else is done with scorer
 
+            logger.info(f"Finished processing: {docu_id.doc_id}")
+    
 
+ii.save_index()
 logger.info("Finished processing all files.")
