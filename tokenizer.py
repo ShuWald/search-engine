@@ -26,13 +26,13 @@ class Tokenizer:
         self.stemmer = PorterStemmer()
 
     # Can also use a simple split() call for this assignment
-    def tokenize(self, text: str) -> list[str]:
+    def _tokenize(self, text: str) -> list[str]:
         return nltk.word_tokenize(text)
 
-    def get_token_counts(self, text: str) -> Counter:
-        return Counter(self.tokenize(text))
+    def _get_token_counts(self, text: str) -> Counter:
+        return Counter(self._tokenize(text))
 
-    def stem(self, word_counts: Counter) -> Counter:
+    def _stem(self, word_counts: Counter) -> Counter:
         stemmed_counts = Counter()
         for token, count in word_counts.items():
             stemmed_token = self.stemmer.stem(token)
@@ -41,7 +41,7 @@ class Tokenizer:
 
     # Returns Counter of stemmed token counts for text, useful for scoring
     def process(self, text: str) -> Counter:
-        return self.stem(self.get_token_counts(text))
+        return self._stem(self._get_token_counts(text))
 
     # Returns list of unique stemmed tokens for text, useful for inverted index
     def process_unique(self, text: str) -> list[str]:

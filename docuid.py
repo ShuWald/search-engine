@@ -3,12 +3,12 @@ from urllib.parse import urlsplit, urlunsplit
 
 class Url:
     def __init__(self, url: str):
-        self.url = self.normalize(url)
+        self.url = self._normalize(url)
 
     # Hello isn't this familiar
     # Normalize a URL, lowercases the scheme and netloc, ensures a path, and optionally keeps the query and fragment
     # Dunno if the urls will even have queries or fragments, @ archbird can grep? or we can log and look for hits
-    def normalize(self, url, keepQuery=True, keepFragment=True):
+    def _normalize(self, url, keepQuery=True, keepFragment=True):
         parts = urlsplit(url)
         scheme = parts.scheme.lower()
         netloc = parts.netloc.lower()
@@ -34,7 +34,7 @@ class DocuID:
         if url is None:
             url = Url(url_string)
         self.url = url
-        self.doc_id = self.hash_url(url)
+        self.doc_id = self._hash_url(url)
 
-    def hash_url(self, url: Url) -> int:
+    def _hash_url(self, url: Url) -> int:
         return hash(url.url)
