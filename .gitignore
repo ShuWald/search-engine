@@ -1,1 +1,9 @@
 Data/*
+!Data/TEST/
+
+.venv/
+venv/
+
+__pycache__/
+
+logs/*
