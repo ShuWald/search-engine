@@ -3,8 +3,6 @@ from collections import Counter
 from nltk.stem import PorterStemmer
 
 
-nltk.download('punkt_tab')
-
 
 # Created this class to maybe help store important info?
 # Will implement once we know what to store
@@ -17,7 +15,7 @@ class Document:
     stem_token_counts: Counter
     unique_stem_tokens: list[str]
     scores: list[float]
-    
+
 
 
 # This class is so ugly sorry
