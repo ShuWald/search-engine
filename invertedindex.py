@@ -3,10 +3,11 @@ from pathlib import Path
 import logger
 import hashlib
 import json
-import bisect
-import multiprocessing as mp
 import os
-from posting import Posting
+import multiprocessing as mp
+
+from doc import Doc
+
 
 class InvertedIndex:
     def __init__(self, file: str):
@@ -18,7 +19,7 @@ class InvertedIndex:
         self.known_urls: set[str] = set()
         # TODO: binary format
         # self.word_offsets: dict[str, tuple[int, int, int]] = {} # word -> lo, hi, end
-        self.writes: list[Posting] = [] # unsynced objects
+        self.writes: list[Doc] = [] # unsynced objects
         self.word_postings: dict[str, list[tuple[str, float]]] = {} # unsynced objects
 
         self._open(file)
@@ -58,12 +59,12 @@ class InvertedIndex:
             path = dir / f
             if f.endswith(".json"):
                 with open(path) as content:
-                    posting = Posting(json.load(content), self.logger)
+                    posting = Doc(json.load(content), self.logger)
                     # TODO: allow overwrite, but don't duplicate files
                     if posting.url in self.known_urls:
                         self.logger.info(f"Skipping duplicate url from {f}")
                     else:
-                        self.add_posting(posting)
+                        self.add_doc(posting)
                         count += 1
                         total_files += 1
                         if count % 100 == 0:
@@ -73,9 +74,40 @@ class InvertedIndex:
         self.sync()
         return total_files
 
-    def add_posting(self, posting: Posting):
+    def add_doc(self, doc: Doc):
         with self.lock:
-            self.writes.append(posting)
+            self.writes.append(doc)
+
+    def query(self, tokens: list[str]):
+        with self.lock:
+            bail = False
+            for w in tokens:
+                if w not in self.word_postings:
+                    self.logger.info(f"Searched token not in index: {w}")
+                    bail = True
+            if bail: return []
+            rows = [self.word_postings[w] for w in tokens]
+            pos = [0 for _ in rows]
+            done = False
+            results = []
+            steps = 0
+            while not done:
+                docids = [r[p][0] for r, p in zip(rows, pos)]
+                print(docids)
+                print(pos)
+                min_doc = min(docids)
+                if all(d == min_doc for d in docids):
+                    results.append(min_doc)
+                for i in range(len(pos)):
+                    if docids[i] == min_doc:
+                        pos[i] += 1
+                for i in range(len(pos)):
+                    if pos[i] >= len(rows[i]):
+                        done = True
+                steps += 1
+                if steps % 100 == 0:
+                    print(f"Taken {steps} out of {max(len(r) for r in rows)}")
+            return results
 
     def sync(self, force=False):
         with self.lock:
