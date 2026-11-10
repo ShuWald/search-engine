@@ -25,6 +25,7 @@ def main():
         print("Indexing interrupted by user.")
     except Exception as e:
         print(f"Exception occurred: {e}")
+        raise
     index.sync()
     print(f"Indexed {num_files} files total.")
 
