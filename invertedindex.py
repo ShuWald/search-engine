@@ -144,7 +144,7 @@ class InvertedIndex:
                         done = True
                 steps += 1
                 if steps % 100 == 0:
-                    print(f"Taken {steps} out of {max(len(r) for r in rows)}")
+                    self.logger.debug(f"Taken {steps} out of {max(len(r) for r in rows)}")
             return [self.url_unhash[r] for r in results]
 
     def sync(self, force=False):

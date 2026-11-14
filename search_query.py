@@ -27,20 +27,26 @@ def main():
 
     query = " ".join(args.query)
 
+    def ask(query):
+        t1 = time.perf_counter()
+        results = search.search(query)
+        t2 = time.perf_counter()
+        for r in results[:args.n]:
+            print(f"    {r}")
+        print(f"{len(results)} found in {t2 - t1 : .4f} s.")
+
     try:
+        for query in args.query:
+            print(f"> {query}")
+            ask(query)
         while True:
-            if query != "":
-                t1 = time.perf_counter()
-                results = search.search(query)
-                t2 = time.perf_counter()
-                for r in results[:args.n]:
-                    print(r)
-                print(f"{len(results)} found in {t2 - t1 : .4f} s.")
             print("> ", end="")
             query = input().strip()
             if query in ["", "q", "quit", "exit"]:
                 print("Exiting.")
                 return
+            if query != "":
+                ask(query)
     except (EOFError, KeyboardInterrupt) as e:
         print("Exiting.")
     except Exception as e:
