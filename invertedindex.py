@@ -55,7 +55,7 @@ class InvertedIndex:
 
     def _hash(self, url) -> bytes:
         hash = hashlib.sha256(bytes(url, encoding='utf8')).digest()
-        self.url_unhash
+        self.url_unhash[hash.hex()] = url
         return hash
 
     @staticmethod
