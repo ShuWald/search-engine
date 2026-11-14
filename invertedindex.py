@@ -133,8 +133,6 @@ class InvertedIndex:
             steps = 0
             while not done:
                 docids = [r[p][0] for r, p in zip(rows, pos)]
-                print(docids)
-                print(pos)
                 min_doc = min(docids)
                 if all(d == min_doc for d in docids):
                     results.append(min_doc)
@@ -147,7 +145,7 @@ class InvertedIndex:
                 steps += 1
                 if steps % 100 == 0:
                     print(f"Taken {steps} out of {max(len(r) for r in rows)}")
-            return results
+            return [self.url_unhash[r] for r in results]
 
     def sync(self, force=False):
         with self.lock:
