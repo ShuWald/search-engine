@@ -1,16 +1,15 @@
-Data/*
-!Data/TEST/
-
 .venv/
 venv/
-
 __pycache__/
-
 logs/*
-
 
 *.json
 *.jsonl
 *.log
 *.pdf
 *.zip
+
+# Order matters
+Data/*
+!Data/TEST/
+!Data/TEST/**
