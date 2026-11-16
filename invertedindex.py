@@ -12,7 +12,7 @@ from doc import Doc
 
 
 class InvertedIndex:
-    k_chunksize = 100
+    k_chunksize = 1000
 
     def __init__(self, file: str | Path, tmp=False):
         self.file = Path(file)
@@ -25,7 +25,7 @@ class InvertedIndex:
         # TODO: binary format
         # self.word_offsets: dict[str, tuple[int, int, int]] = {} # word -> lo, hi, end
         self.writes: list[Doc] = [] # unsynced objects
-        self.word_postings: dict[str, list[tuple[str, float]]] = {} # unsynced objects
+        self.word_postings: dict[str, list[tuple[str, float]]] = {} 
 
         self._open(file)
 
@@ -34,19 +34,29 @@ class InvertedIndex:
             self.logger.info("No save file, creating new index.")
             self.sync(force=True)
             return
-        with open(file) as f:
+        with open(file, encoding="utf-8") as f:
             try:
-                obj = json.load(f)
+                rows = [json.loads(line) for line in f if line.strip()]
             except Exception as e:
-                self.logger.error(f"Failed to open the index file: {e}.")
+                self.logger.error(f"Failed to open the transactional index file: {e}.")
                 raise
             try:
-                self.url_unhash = obj["url_unhash"]
-                self.known_urls = set(obj["known_urls"])
-                self.word_postings = obj["word_postings"]
-                self.logger.info("Opened existing index.")
+                for obj in rows:
+                    url = obj["url"]
+                    hash = self._hash(url).hex()
+                    self.known_urls.add(url)
+                    self.url_unhash[hash] = url
+                    for word, weight in obj["wordweights"].items():
+                        if word not in self.word_postings:
+                            self.word_postings[word] = []
+                        self.word_postings[word].append((hash, weight))
+                for word in self.word_postings:
+                    self.word_postings[word].sort(key=lambda hw: hw[0])
+                self.logger.info(
+                    f"Opened existing index with {len(self.known_urls)} documents."
+                )
             except Exception as e:
-                self.logger.error("Saved index file is invalid - has missing field.")
+                self.logger.error("Saved index file is invalid - has missing fields (Might be transactional)")
                 raise
 
     def __del__(self):
@@ -74,7 +84,7 @@ class InvertedIndex:
             else:
                 self.add_doc(doc)
                 counts += 1
-        if len(files) >= self.k_chunksize:
+        if len(self.writes) >= self.k_chunksize:
             self.sync()
         return counts
 
@@ -120,6 +130,7 @@ class InvertedIndex:
 
     def query(self, tokens: list[str]):
         with self.lock:
+            # Queries word_postings, transactional file not used
             bail = False
             for w in tokens:
                 if w not in self.word_postings:
@@ -153,25 +164,45 @@ class InvertedIndex:
                 self.logger.info("Syncing - nothing to do.")
                 return
             self.logger.info(f"Syncing logger with {len(self.writes)} new writes...")
+            rows = []
             for posting in self.writes:
+                # Can integrate into DocuID hash?
                 hash = self._hash(posting.url).hex()
-                if posting.url in self.known_urls:
+                # TODO: given analytical _open() is down, this is only using only current run to validate
+                if posting.url in self.known_urls: 
                     self.logger.warning("Duplicate posting made it to sync stage.")
-                else:
-                    self.known_urls.add(posting.url)
-                    self.url_unhash[hash] = posting.url
-                    for word, weight in posting.wordweights.items():
-                        if word not in self.word_postings:
-                            self.word_postings[word] = []
-                        self.word_postings[word].append((hash, weight))
+                    continue
+
+                # Transactional
+                rows.append(posting.to_dict())
+
+                # Analytical
+                self.known_urls.add(posting.url)
+                self.url_unhash[hash] = posting.url
+                for word, weight in posting.wordweights.items():
+                    if word not in self.word_postings:
+                        self.word_postings[word] = []
+                    self.word_postings[word].append((hash, weight))
+
+            if rows:
+                with open(self.file, "a", encoding="utf-8") as f:
+                    for row in rows:
+                        f.write(json.dumps(row) + "\n")
+                    f.flush()
+                    os.fsync(f.fileno())
             for word in self.word_postings:
                 self.word_postings[word].sort(key=lambda hw: hw[0])
+
+            """ Old analytical file logic for reference
             tmpfile = self.file.as_posix() + ".tmp"
             with open(tmpfile, "w") as f:
                 obj = {
                     "url_unhash": self.url_unhash,
                     "known_urls": list(self.known_urls),
                     "word_postings": self.word_postings
+                    # TODO: Do not append rows inside this JSON object. Use a separate
+                    # append-only transactional file (or JSONL format); otherwise the
+                    # existing analytical index becomes invalid and queries break.
                 }
                 json.dump(obj, f, indent=4)
             try:
@@ -179,5 +210,24 @@ class InvertedIndex:
             except FileNotFoundError:
                 pass
             os.rename(tmpfile, self.file)
+        """
+            
             self.writes = []
         self.logger.info("Synced logger.")
+
+    # TODO: Add transactional_analytical() for the later conversion step: read rows
+    # from the append-only transactional file, then rebuild/update word_postings.
+    # Preserve the current in-memory posting update now; this conversion is not
+    # required for query correctness in the initial transactional-write change.
+    #
+    # def transactional_analytical(self):
+    #     """Build analytical postings from persisted document rows."""
+    #     pass
+    #
+    # TODO: When conversion is implemented, define whether the analytical rebuild
+    # replaces or merges word_postings and how duplicate URLs, sorting, stale rows,
+    # and failed conversions are handled.
+    #
+    # def update_word_postings_from_analytical(self, analytical_file):
+    #     """Refresh the derived word_postings structure from analytical rows."""
+    #     pass

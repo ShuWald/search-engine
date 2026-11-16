@@ -8,4 +8,9 @@ __pycache__/
 
 logs/*
 
-inverted_index.json
+
+*.json
+*.jsonl
+*.log
+*.pdf
+*.zip

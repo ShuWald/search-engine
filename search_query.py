@@ -1,4 +1,3 @@
-import readline
 import time
 import os
 from search import Search

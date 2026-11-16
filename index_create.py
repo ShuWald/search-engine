@@ -12,14 +12,17 @@ def main():
 
     args = parser.parse_args()
 
+    
     if not args.f and os.path.isfile(args.index):
         print("Index already exists, -f to override.")
-        return
+        # With this return checkpointing is impossible. _open() never used...
+        # return
 
     index = InvertedIndex(args.index)
     num_files = 0
     try:
         for dir in args.dirs:
+            # Doesn't execute?
             num_files += index.add_dir(dir)
     except KeyboardInterrupt:
         print("Indexing interrupted by user.")
