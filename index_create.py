@@ -16,6 +16,7 @@ def main():
     if not args.index.endswith(".index"):
         print("Index file should have .index extension.")
         return
+
     name = args.index[:-6]
     print(f"Using {name}.index")
     if not args.f and os.path.isfile(args.index):

@@ -1,3 +1,4 @@
+from pylab import ndarray
 from collections import defaultdict
 import json
 from doc import Doc
@@ -87,7 +88,13 @@ def parse_chunk(name: str, files: list[Path], log):
     log.info(f"Completed chunk.")
 
 
-
+"""
+Inverted index has such format:
+    jsons offset (8 bytes)
+    postings list [doc_id, score] (2x4 bytes)
+    term locations { term: offset } \n
+    doc ids { url : doc_id }
+"""
 def invert_chunk(out, chunk, log):
     # invert chunk to be an index file
     doc_ids: dict[str, int] = {}
@@ -125,11 +132,57 @@ def invert_chunk(out, chunk, log):
 def merge_inverts(out, files):
     # TODO: shard
     # merge into out
-    pass
+    n = len(files)
+    indices = [Index(file) for file in files]
+
+    num_docs = 0
+    all_doc_ids: dict[str, int] = {} # map chunk -> doc id -> new doc id
+    ind_doc_id: list[dict[int, int]] = [] # map chunk -> doc id -> new doc id
+    all_terms: set[str] = set()
+    for ind in indices:
+        ind_doc_id.append({})
+        i = len(ind_doc_id)-1
+        for doc, url in ind.doc_urls.items():
+            ind_doc_id[i][doc] = num_docs
+            all_doc_ids[url] = num_docs
+            num_docs += 1
+        all_terms.update(ind.term_ranges.keys())
+    all_terms: list[str] = list(all_terms)
+
+    dt = np.dtype([('id', '>H'), ('score', '>H')])
+    term_postings: list[tuple[str, list]] = []
+    for term in all_terms:
+        postings: list = []
+        for i in range(n):
+            doc_map = ind_doc_id[i]
+            postings.extend([(doc_map[kv['id']], kv['score']) for kv in indices[i]._postings(term)])
+        # postings = np.concat(*postings_lists, dtype=Index.dt)
+        postings.sort(key=lambda k: k[0])
+        term_postings.append((term, postings))
+
+    int_width = 2
+    json_offsets = 8 + sum(len(ps[1]) for ps in term_postings) * int_width * 2
+    print("size is", dt.itemsize)
+    term_locs: dict[str, int] = {}
+    pos = 8
+    with open(out, "wb") as f:
+        f.write((json_offsets).to_bytes(8))
+        for term, postings in term_postings:
+            term_locs[term] = pos
+            for doc_id, score in postings:
+                f.write(int(doc_id).to_bytes(int_width))
+                f.write(int(score).to_bytes(int_width))
+                pos += int_width * 2
+        f.write(json.dumps(term_locs).encode())
+        f.write("\n".encode())
+        f.write(json.dumps(all_doc_ids).encode())
+
 
 
 
 class Index:
+    dt = np.dtype([('id', '>H'), ('score', '>H')])
+
     def __init__(self, filename):
         self.filename = filename
         self.term_ranges: dict[str, tuple[int, int]]
@@ -147,22 +200,24 @@ class Index:
         self.term_ranges = { kv[0]: (kv[1], r) for kv, r in zip(term_locs, next_locs) }
         line2 = f.readline()
         self.doc_urls = { i: doc for doc, i in json.loads(line2).items() }
-        print(f"Opened {len(self.doc_urls)} docs to search.")
+        self.num_docs: int = len(self.doc_urls)
         # TODO: cache common words?
 
+    def _postings(self, token: str) -> np.ndarray:
+        if token not in self.term_ranges:
+            return np.array([], dtype=self.dt)
+        r = self.term_ranges[token]
+        m = (r[1]-r[0])//self.dt.itemsize
+        self.file.seek(r[0])
+        return np.fromfile(self.file, count=m, dtype=self.dt)
+
     def query(self, tokens: list[str]) -> list[tuple[str, list[float]]]:
-        ranges = [self.term_ranges[token] for token in tokens]
-        locs = [0 for r in ranges]
-        dt = np.dtype([('id', '>H'), ('score', '>H')])
-        maxs = [(r[1]-r[0])//dt.itemsize for r in ranges]
+        if len(tokens) == 0:
+            return []
+        doc_ids = [self._postings(tok) for tok in tokens]
+        locs = [0 for _ in doc_ids]
+        maxs = [len(ds) for ds in doc_ids]
         f = self.file
-        doc_ids = []
-        print("ranges are", ranges)
-        for r, m in zip(ranges, maxs):
-            f.seek(r[0])
-            doc_ids.append(np.fromfile(f, count=m, dtype=dt))
-            print(f"reading from {r[0]} to count {m}")
-        print(doc_ids)
 
         pos = 0
         result: list[tuple[str, list[float]]] = []
