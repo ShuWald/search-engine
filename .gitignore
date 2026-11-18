@@ -1,11 +1,16 @@
-Data/*
-!Data/TEST/
-
 .venv/
 venv/
-
 __pycache__/
-
 logs/*
 
-inverted_index.json
+*.json
+*.jsonl
+*.index
+*.log
+*.pdf
+*.zip
+
+# Order matters
+Data/*
+!Data/TEST/
+!Data/TEST/**

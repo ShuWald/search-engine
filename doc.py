@@ -53,7 +53,15 @@ class Doc:
         # tokenizer.process_unique does this directly from content
         total_count = list(token_dict.items()) # create a list of tuples(token, frequency)
 
+        self.docu_id = docu_id
         self.url = docu_id.url.url
         self.wordweights = token_dict
 
         logger.info(f"Finished processing: {docu_id.url.url}")
+
+    def to_dict(self) -> dict:
+        return {
+            "doc_id": str(self.docu_id),
+            "url": self.url,
+            "wordweights": self.wordweights
+        }
