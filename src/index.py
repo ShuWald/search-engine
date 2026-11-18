@@ -7,6 +7,7 @@ import os
 from typing import Iterable
 from pathlib import Path
 from multiprocessing import Process, Pool
+import numpy as np
 
 log = logger.get_file_logger("Index", propagate=True)
 
@@ -110,12 +111,14 @@ def invert_chunk(out, chunk, log):
         f.write(offset_index.to_bytes(8))
         for word in sorted(word_postings.keys()):
             term_locs[word] = pos
+            # TODO: write via numpy buffer
             for posting in word_postings[word]:
                 f.write(posting[0].to_bytes(int_width))
                 f.write(posting[1].to_bytes(int_width))
             pos += len(word_postings[word]) * int_width * 2
         assert pos == offset_index, f"{pos} == {offset_index}"
         f.write(json.dumps(term_locs).encode())
+        f.write("\n".encode())
         f.write(json.dumps(doc_ids).encode())
     log.info(f"Completed invert.")
 
@@ -123,3 +126,57 @@ def merge_inverts(out, files):
     # TODO: shard
     # merge into out
     pass
+
+
+
+class Index:
+    def __init__(self, filename):
+        self.filename = filename
+        self.term_ranges: dict[str, tuple[int, int]]
+        self.doc_urls: dict[int, str]
+        self._open()
+
+    def _open(self):
+        self.file = open(self.filename, "rb")
+        f = self.file
+        json_index = int.from_bytes(f.read(8))
+        f.seek(json_index)
+        line1 = f.readline()
+        term_locs = sorted(json.loads(line1).items(), key=lambda x: x[1])
+        next_locs = sorted([t[1] for t in term_locs])[1:] + [json_index]
+        self.term_ranges = { kv[0]: (kv[1], r) for kv, r in zip(term_locs, next_locs) }
+        line2 = f.readline()
+        self.doc_urls = { i: doc for doc, i in json.loads(line2).items() }
+        print(f"Opened {len(self.doc_urls)} docs to search.")
+        # TODO: cache common words?
+
+    def query(self, tokens: list[str]) -> list[tuple[str, list[float]]]:
+        ranges = [self.term_ranges[token] for token in tokens]
+        locs = [0 for r in ranges]
+        dt = np.dtype([('id', '>H'), ('score', '>H')])
+        maxs = [(r[1]-r[0])//dt.itemsize for r in ranges]
+        f = self.file
+        doc_ids = []
+        print("ranges are", ranges)
+        for r, m in zip(ranges, maxs):
+            f.seek(r[0])
+            doc_ids.append(np.fromfile(f, count=m, dtype=dt))
+            print(f"reading from {r[0]} to count {m}")
+        print(doc_ids)
+
+        pos = 0
+        result: list[tuple[str, list[float]]] = []
+        min_id = 0
+        while all(l < m for l, m in zip(locs, maxs)):
+            # TODO: broken on multiple input
+            min_id = min(ds[l]['id'] for ds, l in zip(doc_ids, locs))
+            if all(ds[l]['id'] == min_id for ds, l in zip(doc_ids, locs)):
+                result.append((self.doc_urls[min_id], list(ds[l]['score'] for ds, l in zip(doc_ids, locs))))
+                for i in range(len(locs)):
+                    locs[i] += 1
+            else:
+                # TODO: optimize by increment until cur max
+                for i in range(len(locs)):
+                    if doc_ids[i][locs[i]]['id'] == min_id:
+                        locs[i] += 1
+        return result

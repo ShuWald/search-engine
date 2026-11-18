@@ -1,9 +1,10 @@
 from nltk import PorterStemmer, word_tokenize
 from invertedindex import InvertedIndex
+from .index import Index
 
 class Search:
     def __init__(self, file):
-        self.index = InvertedIndex(file)
+        self.index = Index(file)
         self.stemmer = PorterStemmer()
 
     def search(self, query):

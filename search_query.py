@@ -1,7 +1,7 @@
 import readline
 import time
 import os
-from search import Search
+from src.search import Search
 from argparse import ArgumentParser
 
 def main():
@@ -11,6 +11,10 @@ def main():
     parser.add_argument("-n", nargs=1, type=int, default=5)
 
     args = parser.parse_args()
+
+    if not any(args.index.endswith(a) for a in [".index", ".invert"]):
+        print(f"File {args.index} doesn't have the right extension (.index or .invert).")
+        return
 
     if not os.path.isfile(args.index):
         print(f"Index file {args.index} doesn't exist.")
