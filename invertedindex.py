@@ -11,7 +11,7 @@ from doc import Doc
 
 
 class InvertedIndex:
-    k_chunksize = 1000
+    k_chunksize = 500
 
     def __init__(self, file: str | Path, tmp=False):
         passed_file = Path(file)
@@ -217,10 +217,14 @@ class InvertedIndex:
                     "url": posting.url,
                     "wordweights": posting.wordweights,
                 })
+
+                # Analytical, is it useless now?
+                """
                 self.known_urls.add(posting.url)
                 self.url_unhash[doc_id] = posting.url
                 for word, weight in posting.wordweights.items():
                     self.word_postings.setdefault(word, []).append((doc_id, weight))
+                """
 
             if rows:
                 with open(self.records, "a", encoding="utf-8") as f:
@@ -228,8 +232,10 @@ class InvertedIndex:
                         f.write(json.dumps(row) + "\n")
                     f.flush()
                     os.fsync(f.fileno())
+            """
             for word in self.word_postings:
                 self.word_postings[word].sort(key=lambda hw: hw[0])
+            """
 
             self.writes = []
         self.logger.info("Synced logger.")

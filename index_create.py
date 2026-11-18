@@ -1,4 +1,5 @@
 import sys
+import time
 from invertedindex import InvertedIndex
 from argparse import ArgumentParser
 import os
@@ -26,6 +27,7 @@ def main():
 
     index = InvertedIndex(index_file)
     num_files = 0
+    start_time = time.time()
     try:
         for dir in args.dirs:
             # Doesn't execute?
@@ -35,8 +37,15 @@ def main():
     except Exception as e:
         print(f"Exception occurred: {e}")
         raise
+    parse_time = time.time()
     index.sync()
+    final_sync_time = time.time()
     index.transactional_analytical()
+    transpose_time = time.time()
     print(f"Indexed {num_files} files total.")
+    print(f"Times taken:\n"
+          f"Parse: {parse_time - start_time:.2f}s\n"
+          f"Final Sync: {final_sync_time - parse_time:.2f}s\n"
+          f"Transpose: {transpose_time - final_sync_time:.2f}s")
 
 main()
