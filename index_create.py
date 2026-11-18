@@ -12,13 +12,19 @@ def main():
 
     args = parser.parse_args()
 
-    
-    if not args.f and os.path.isfile(args.index):
+    index_file = args.index if args.index.endswith(".index") else args.index + ".index"
+    if not args.f and os.path.isfile(index_file):
         print("Index already exists, -f to override.")
-        # With this return checkpointing is impossible. _open() never used...
-        # return
+        return
 
-    index = InvertedIndex(args.index)
+    if args.f:
+        for path in (index_file, index_file.removesuffix(".index") + ".jsonl"):
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                pass
+
+    index = InvertedIndex(index_file)
     num_files = 0
     try:
         for dir in args.dirs:
@@ -30,6 +36,7 @@ def main():
         print(f"Exception occurred: {e}")
         raise
     index.sync()
+    index.transactional_analytical()
     print(f"Indexed {num_files} files total.")
 
 main()

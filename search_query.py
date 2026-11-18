@@ -11,13 +11,14 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.isfile(args.index):
+    index_file = args.index if args.index.endswith(".index") else args.index + ".index"
+    if not os.path.isfile(index_file):
         print(f"Index file {args.index} doesn't exist.")
         return
 
     try:
         t1 = time.perf_counter()
-        search = Search(args.index)
+        search = Search(index_file)
         t2 = time.perf_counter()
         print(f"Opened Search in {t2 - t1:.4f} s")
     except Exception as e:

@@ -12,12 +12,13 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.isfile(args.index):
+    index_file = args.index if args.index.endswith(".index") else args.index + ".index"
+    if not os.path.isfile(index_file):
         print(f"Index file {args.index} doesn't exist.")
         return
 
     try:
-        index = InvertedIndex(args.index)
+        index = InvertedIndex(index_file)
     except Exception as e:
         print(e)
         print("Failed to open index file.")

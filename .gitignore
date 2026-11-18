@@ -5,6 +5,7 @@ logs/*
 
 *.json
 *.jsonl
+*.index
 *.log
 *.pdf
 *.zip
