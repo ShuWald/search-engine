@@ -7,7 +7,7 @@ import json
 import os
 import multiprocessing as mp
 import asyncio
-
+import math
 from doc import Doc
 
 
@@ -145,6 +145,42 @@ class InvertedIndex:
                 steps += 1
                 if steps % 100 == 0:
                     self.logger.debug(f"Taken {steps} out of {max(len(r) for r in rows)}")
+
+
+            N = len(self.known_urls)
+            document_scores = {}
+            for r in results:
+                document_scores[r] = 0
+
+
+                # Per document, find term frequency within document 
+            
+                for token in tokens: 
+                    tf = 0
+                    df = len(self.word_postings[token])
+                    # 1. search the term in index 
+                    # 2. go inside word posting and use hash to find the document 
+                    tf = 0
+                    for doc_id, weight in self.word_postings[token]:
+                    # 3. from that documents entry (frequency) -> assign to tf 
+                        if(doc_id == r):
+                            tf = weight 
+
+                    # 5. get the number of documents within word posting -> df_t
+                    # 6.
+                    log_frequency_weight = 0
+                    if(tf <= 0):
+                        log_frequency_weight = 0
+                    else:
+                        log_frequency_weight = 1 + math.log10(tf)
+                        
+                        
+                    idf = math.log10(N/df)
+
+                    document_scores[r] += log_frequency_weight * idf
+            results.sort(key = lambda r: document_scores[r], reverse = True)
+
+
             return [self.url_unhash[r] for r in results]
 
     def sync(self, force=False):
