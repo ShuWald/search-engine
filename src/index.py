@@ -1,5 +1,5 @@
 from pylab import ndarray
-from collections import defaultdict
+from collections import defaultdict, Counter
 import json
 from doc import Doc
 import asyncio
@@ -137,32 +137,44 @@ def merge_inverts(out, files):
 
     num_docs = 0
     all_doc_ids: dict[str, int] = {} # map chunk -> doc id -> new doc id
+    all_doc_urls: dict[int, str] = {} # map chunk -> doc id -> new doc id
     ind_doc_id: list[dict[int, int]] = [] # map chunk -> doc id -> new doc id
     all_terms: set[str] = set()
     for ind in indices:
         ind_doc_id.append({})
         i = len(ind_doc_id)-1
         for doc, url in ind.doc_urls.items():
-            ind_doc_id[i][doc] = num_docs
-            all_doc_ids[url] = num_docs
-            num_docs += 1
+            if doc in all_doc_ids:
+                new_id = all_doc_ids[url]
+            else:
+                all_doc_ids[url] = num_docs
+                new_id = num_docs
+                all_doc_urls[new_id] = url
+                num_docs += 1
+            ind_doc_id[i][doc] = new_id
         all_terms.update(ind.term_ranges.keys())
     all_terms: list[str] = list(all_terms)
 
     dt = np.dtype([('id', '>H'), ('score', '>H')])
     term_postings: list[tuple[str, list]] = []
-    for term in all_terms:
+    has_duplicates = 0
+    for term in sorted(all_terms):
         postings: list = []
         for i in range(n):
             doc_map = ind_doc_id[i]
             postings.extend([(doc_map[kv['id']], kv['score']) for kv in indices[i]._postings(term)])
         # postings = np.concat(*postings_lists, dtype=Index.dt)
         postings.sort(key=lambda k: k[0])
+        if not has_duplicates:
+            counts = Counter([p[0] for p in postings])
+            for doc, count in counts.items():
+                if count > 1:
+                    print(f"Duplicate doc ids found for {all_doc_urls[doc]}")
+                # has_duplicates = True
         term_postings.append((term, postings))
 
     int_width = 2
     json_offsets = 8 + sum(len(ps[1]) for ps in term_postings) * int_width * 2
-    print("size is", dt.itemsize)
     term_locs: dict[str, int] = {}
     pos = 8
     with open(out, "wb") as f:
