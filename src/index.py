@@ -115,13 +115,13 @@ def invert_chunk(out, chunk, log):
     offset_index = 8 + postings_length
     pos = 8
     with open(out, "wb") as f:
-        f.write(offset_index.to_bytes(8))
+        f.write(offset_index.to_bytes(8, byteorder='big'))
         for word in sorted(word_postings.keys()):
             term_locs[word] = pos
             # TODO: write via numpy buffer
             for posting in word_postings[word]:
-                f.write(posting[0].to_bytes(int_width))
-                f.write(posting[1].to_bytes(int_width))
+                f.write(posting[0].to_bytes(int_width, byteorder='big'))
+                f.write(posting[1].to_bytes(int_width, byteorder='big'))
             pos += len(word_postings[word]) * int_width * 2
         assert pos == offset_index, f"{pos} == {offset_index}"
         f.write(json.dumps(term_locs).encode())
@@ -178,12 +178,12 @@ def merge_inverts(out, files):
     term_locs: dict[str, int] = {}
     pos = 8
     with open(out, "wb") as f:
-        f.write((json_offsets).to_bytes(8))
+        f.write((json_offsets).to_bytes(8, byteorder='big'))
         for term, postings in term_postings:
             term_locs[term] = pos
             for doc_id, score in postings:
-                f.write(int(doc_id).to_bytes(int_width))
-                f.write(int(score).to_bytes(int_width))
+                f.write(int(doc_id).to_bytes(int_width, byteorder='big'))
+                f.write(int(score).to_bytes(int_width, byteorder='big'))
                 pos += int_width * 2
         f.write(json.dumps(term_locs).encode())
         f.write("\n".encode())
@@ -204,7 +204,7 @@ class Index:
     def _open(self):
         self.file = open(self.filename, "rb")
         f = self.file
-        json_index = int.from_bytes(f.read(8))
+        json_index = int.from_bytes(f.read(8), byteorder='big')
         f.seek(json_index)
         line1 = f.readline()
         term_locs = sorted(json.loads(line1).items(), key=lambda x: x[1])
