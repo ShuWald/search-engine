@@ -77,12 +77,16 @@ def parse_chunk(name: str, files: list[Path], log):
                 continue
             with open(file) as content:
                 try:
-                    doc = Doc(json.load(content))
+                    jstuff = json.load(content)
+                    doc = Doc(jstuff)
                     wordweights: dict[str, int] = doc.wordweights
                     json.dump([file.as_posix(), doc.url, wordweights], f, indent=None, separators=(',', ':'))
                     f.write("\n")
                 except KeyboardInterrupt:
                     raise
+                except TimeoutError as e:
+                    log.error(f"Error: {e}")
+                    log.error(f"Failed to parse doc in time: {jstuff['url']}")
                 except ValueError as e:
                     log.error(f"Found error during parsing: {e}")
     log.info(f"Completed chunk.")
