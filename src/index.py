@@ -128,7 +128,7 @@ def invert_chunk(out, chunk, log):
                 try:
                     f.write(posting[1].to_bytes(int_width, byteorder='big'))
                 except OverflowError as e:
-                    url = next((k in for k, v in doc_ids.items() if v == posting[0]))
+                    url = next((k for k, v in doc_ids.items() if v == posting[0]))
                     log.error(f"OverflowError {e}")
                     log.error(f"Overflow in word count: {word} in {url}")
                     f.write((2**int_width-1).to_bytes(int_width, byteorder='big'))
