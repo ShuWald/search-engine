@@ -1,5 +1,6 @@
+from pathlib import Path
 import sys
-from invertedindex import InvertedIndex
+from src.index import index_all
 from argparse import ArgumentParser
 import os
 
@@ -12,21 +13,25 @@ def main():
 
     args = parser.parse_args()
 
+    if not args.index.endswith(".index"):
+        print("Index file should have .index extension.")
+        return
+
+    name = args.index[:-6]
+    print(f"Using {name}.index")
     if not args.f and os.path.isfile(args.index):
         print("Index already exists, -f to override.")
         return
+    if not os.path.exists(Path(args.index).parent):
+        os.mkdir(Path(args.index).parent)
 
-    index = InvertedIndex(args.index)
-    num_files = 0
     try:
-        for dir in args.dirs:
-            num_files += index.add_dir(dir)
+        index_all(name, [Path(d) for d in args.dirs])
     except KeyboardInterrupt:
         print("Indexing interrupted by user.")
     except Exception as e:
         print(f"Exception occurred: {e}")
         raise
-    index.sync()
-    print(f"Indexed {num_files} files total.")
 
-main()
+if __name__ == "__main__":
+    main()

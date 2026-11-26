@@ -13,7 +13,7 @@ class Doc:
     tokenizer = Tokenizer()
 
     # Create from a deserialized json object from the dataset.
-    def __init__(self, obj, logger: Logger):
+    def __init__(self, obj):
         docu_id = DocuID(url_string=obj.get("url"))
         content = obj.get("content")
 
@@ -55,5 +55,3 @@ class Doc:
 
         self.url = docu_id.url.url
         self.wordweights = token_dict
-
-        logger.info(f"Finished processing: {docu_id.url.url}")

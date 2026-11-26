@@ -1,6 +1,6 @@
 import time
 import sys
-from invertedindex import InvertedIndex
+from src.index import Index
 from argparse import ArgumentParser
 import os
 
@@ -12,15 +12,21 @@ def main():
 
     args = parser.parse_args()
 
+    if not any(args.index.endswith(a) for a in [".index", ".invert"]):
+        print(f"File {args.index} doesn't have the right extension (.index or .invert).")
+        return
+
     if not os.path.isfile(args.index):
         print(f"Index file {args.index} doesn't exist.")
         return
 
     try:
-        index = InvertedIndex(args.index)
+        index = Index(args.index)
     except Exception as e:
         print(e)
         print("Failed to open index file.")
+        raise
+        return
 
     try:
         t1 = time.perf_counter()
